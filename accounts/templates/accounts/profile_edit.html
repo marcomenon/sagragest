@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+{% block title %}Modifica profilo{% endblock %}
+
+{% block content %}
+<h1 class="text-center text-2xl md:text-4xl font-bold my-8 md:my-12">Modifica profilo</h1>
+<div class="card w-full max-w-lg shadow-xl bg-base-200 mx-auto">
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data" class="space-y-4">{% csrf_token %}
+      {% for field in form %}
+        <div>
+          <label class="label mb-2">
+            <span class="label-text">{{ field.label }}</span>
+          </label>
+          {% if field.name == "theme" %}
+            {% render_field field class="select select-bordered w-full" %}
+          {% elif field.field.widget.input_type == "textarea" %}
+            {% render_field field class="textarea textarea-bordered w-full" %}
+          {% elif field.field.widget.input_type == "select" %}
+            {% render_field field class="select select-bordered w-full" %}
+          {% elif field.field.widget.input_type == "checkbox" %}
+            <div class="form-control">
+              <label class="label cursor-pointer">
+                {% render_field field class="checkbox" %}
+                <span class="label-text ml-2">{{ field.label }}</span>
+              </label>
+            </div>
+          {% elif field.field.widget.input_type == "radio" %}
+            <div class="form-control">
+              {% render_field field class="radio" %}
+            </div>
+          {% elif field.field.widget.input_type == "file" %}
+            {% render_field field class="file-input file-input-bordered w-full" %}
+          {% else %}
+            {% render_field field class="input input-bordered w-full" %}
+          {% endif %}
+          {% if field.help_text %}
+            <div class="text-xs text-gray-500 mt-2">{{ field.help_text }}</div>
+          {% endif %}
+          {% if field.errors %}
+            <div class="text-error text-sm mt-2">{{ field.errors|striptags }}</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+      <div class="flex justify-between mt-6">
+        <a href="{% url 'profile' %}" class="btn btn-outline">Annulla</a>
+        <button type="submit" class="btn btn-primary">Salva</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

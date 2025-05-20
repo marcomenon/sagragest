@@ -1,0 +1,220 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load partials %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<h1 class="text-center text-2xl md:text-4xl font-bold mt-6 md:mt-10">Dashboard Reportistica</h1>
+<div id="filters-and-dashboard" class="mt-10">
+  {% partial filters-and-dashboard %}
+</div>
+{% endblock %}
+
+{% partialdef filters-and-dashboard %}
+<div class="flex flex-col md:flex-row gap-8 mt-6 w-full mx-auto px-8">
+  
+  <!-- Sidebar Statistiche -->
+  <aside class="w-full flex-shrink-0 md:w-1/4">
+    <!-- Statistiche DaisyUI -->
+    <div class="stats shadow w-full bg-base-200 mb-6">
+      {% if is_superuser %}
+        <div class="stat flex items-center justify-between">
+          <div class="stat-figure text-neutral">
+            <!-- information-circle icon -->
+            <svg class="inline-block h-10 w-10 stroke-current" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 8h.01M12 12v4"/></svg>
+          </div>
+          <div>
+            <div class="stat-title text-neutral">Eventi</div>
+            <div class="stat-value text-neutral">{{ events_count|default:"0" }}</div>
+          </div>
+        </div>
+      {% endif %}
+      <div class="stat flex items-center justify-between">
+        <div class="stat-figure text-neutral">
+          <!-- calendar-days icon -->
+          <svg class="inline-block h-10 w-10 stroke-current" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect width="18" height="14" x="3" y="5" rx="2"/><path stroke-linecap="round" stroke-linejoin="round" d="M8 3v2m8-2v2M3 9h18"/></svg>
+        </div>
+        <div>
+          <div class="stat-title text-neutral">Giornate</div>
+          <div class="stat-value text-neutral">{{ daytimes_count|default:"0" }}</div>
+        </div>
+      </div>
+      <div class="stat flex items-center justify-between">
+        <div class="stat-figure text-neutral">
+          <!-- bars-3 icon -->
+          <svg class="inline-block h-10 w-10 stroke-current" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5m-16.5 5.25h16.5m-16.5 5.25h16.5"/></svg>
+        </div>
+        <div>
+          <div class="stat-title text-neutral">Ordini</div>
+          <div class="stat-value text-neutral">{{ orders_count|default:"0" }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="stats shadow w-full bg-base-200 mb-6">
+      <div class="stat flex items-center justify-between">
+        <div class="stat-figure text-success">
+          <!-- currency-euro icon -->
+          <svg class="inline-block h-10 w-10 stroke-current" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 17.25A6.75 6.75 0 1 1 12 5.25m-3.75 6h7.5m-7.5 3h7.5"/></svg>
+        </div>
+        <div>
+          <div class="stat-title text-success">Incasso</div>
+          <div class="stat-value text-success">{{ income|floatformat:2 }} €</div>
+        </div>
+      </div>
+    </div>
+    <!-- Filtri -->
+    <form id="report-filters"
+          class="card bg-base-200 shadow-xl p-6 flex flex-col gap-y-4 mt-6 w-full"
+          method="get">
+      {% if is_superuser %}
+        <div class="form-control min-w-[150px]">
+          <label class="label font-bold mb-1 w-full">Gruppo</label>
+          <select name="group" class="select select-bordered w-full transition hover:shadow focus:outline-none"
+                  hx-get="{% url 'reports-dashboard' %}"
+                  hx-target="#filters-and-dashboard"
+                  hx-include="#report-filters"
+                  hx-trigger="change">
+            <option value="">Tutti</option>
+            {% for group in groups %}
+              <option value="{{ group.id }}" {% if group.id|stringformat:'s' == request.GET.group %}selected{% endif %}>{{ group.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endif %}
+      <div class="form-control min-w-[150px]" id="event-filter">
+        <label class="label font-bold mb-1 w-full">Evento</label>
+        <select name="event" class="select select-bordered w-full transition hover:shadow focus:outline-none"
+                hx-get="{% url 'reports-dashboard' %}"
+                hx-target="#filters-and-dashboard"
+                hx-include="#report-filters"
+                hx-trigger="change">
+          {% if is_superuser %}
+            <option value="">Tutti</option>
+            {% for event in events %}
+              <option value="{{ event.id }}" {% if event.id|stringformat:'s' == selected_event_id %}selected{% endif %}>{{ event.name }} ({{ event.year }})</option>
+            {% endfor %}
+          {% else %}
+            {% for event in events %}
+              <option value="{{ event.id }}" {% if event.id|stringformat:'s' == selected_event_id %}selected{% endif %}>{{ event.name }} ({{ event.year }})</option>
+            {% endfor %}
+          {% endif %}
+        </select>
+      </div>
+      {% if is_superuser %}
+        <div class="form-control min-w-[150px]">
+          <label for="active_only" class="label font-bold mb-1 w-full">Solo eventi attivi</label>
+          <div>
+            <input type="checkbox" name="active_only" value="1" id="active_only" class="checkbox"
+                   hx-get="{% url 'reports-dashboard' %}"
+                   hx-target="#filters-and-dashboard" 
+                   hx-include="#report-filters"
+                   hx-trigger="change"
+                   {% if active_only %}checked{% endif %}>
+          </div>
+        </div>
+      {% endif %}
+      <div class="form-control min-w-[150px]" id="daytime-filter">
+        <label class="label font-bold mb-1 w-full">Giornata</label>
+        <select name="daytime" class="select select-bordered w-full transition hover:shadow focus:outline-none"
+                hx-get="{% url 'reports-dashboard' %}"
+                hx-target="#filters-and-dashboard"
+                hx-include="#report-filters"
+                hx-trigger="change">
+          <option value="">Tutte</option>
+          {% for daytime in daytimes %}
+            <option value="{{ daytime.id }}" {% if daytime.id|stringformat:'s' == request.GET.daytime %}selected{% endif %}>{{ daytime }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-control mt-4 flex items-end">
+        <button type="button" class="btn btn-neutral w-full transition hover:scale-105" onclick="window.location.href='{% url 'reports-dashboard' %}'">
+          <!-- arrow-path icon -->
+          <svg class="inline w-5 h-5 mr-2 text-neutral" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12a7.5 7.5 0 1 1 7.5 7.5m0 0v-3m0 3h3"/></svg>
+          Reset
+        </button>
+      </div>
+    </form>
+  </aside>
+
+  <!-- Card Evento selezionato -->
+  <section class="flex-1 flex items-start">
+    <div class="card bg-base-200 shadow-lg p-8 w-full">
+      <h2 class="text-2xl font-bold text-center">
+        {% for event in events %}
+          {% if event.id|stringformat:'s' == selected_event_id %}
+            {{ event.name }} ({{ event.year }})
+          {% endif %}
+        {% endfor %}
+      </h2>
+      {% if selected_event_id and not request.GET.daytime %}
+        <div class="flex items-center justify-between mb-4 mt-6">
+          <form id="mode-form" hx-get="{% url 'reports-dashboard' %}" hx-target="#filters-and-dashboard" hx-include="#report-filters, #mode-form" class="ml-4">
+            <select name="mode" class="select select-bordered" hx-trigger="change">
+              <option value="qty" {% if mode == "qty" %}selected{% endif %}>Quantità</option>
+              <option value="income" {% if mode == "income" %}selected{% endif %}>Incasso</option>
+            </select>
+          </form>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="table table-zebra w-full">
+            <thead>
+              <tr>
+                <th>Categoria</th>
+                <th>Prodotto</th>
+                {% for dt in daytimes_list %}
+                  <th>{{ dt.start|date:"d/m/Y" }}</th>
+                {% endfor %}
+                <th class="font-bold">Totale riga</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in product_matrix %}
+                <tr>
+                  <td>{{ row.category }}</td>
+                  <td>{{ row.product }}</td>
+                  {% for value in row.values %}
+                    <td>
+                      {% if mode == "income" %}
+                        {{ value|floatformat:2 }} €
+                      {% else %}
+                        {{ value }}
+                      {% endif %}
+                    </td>
+                  {% endfor %}
+                  <td class="font-bold">
+                    {% if mode == "income" %}
+                      {{ row.row_total|floatformat:2 }} €
+                    {% else %}
+                      {{ row.row_total }}
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot>
+              <tr class="font-bold">
+                <td colspan="2">Totale colonna</td>
+                {% for col in col_totals %}
+                  <td>
+                    {% if mode == "income" %}
+                      {{ col|floatformat:2 }} €
+                    {% else %}
+                      {{ col }}
+                    {% endif %}
+                  </td>
+                {% endfor %}
+                <td>
+                  {% if mode == "income" %}
+                    {{ grand_total|floatformat:2 }} €
+                  {% else %}
+                    {{ grand_total }}
+                  {% endif %}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endpartialdef %}

@@ -1,0 +1,57 @@
+# File di ambiente
+.env
+
+# File Python
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+
+# Cartelle di virtualenv
+venv/
+env/
+ENV/
+.venv/
+.python-version
+
+# File di log
+*.log
+
+# File di database SQLite (se usati)
+*.sqlite3
+
+# File temporanei di sistema
+.DS_Store
+Thumbs.db
+
+# File di test coverage
+htmlcov/
+.coverage
+.tox/
+.nox/
+.cache/
+.pytest_cache/
+
+# Cartelle static/media generate
+staticfiles/
+mediafiles/
+
+# File generati da editor
+.vscode/
+.idea/
+*.swp
+*~
+
+# Docker
+**/__pycache__/
+**/*.pyc
+docker-compose.override.yml
+
+# Nginx log
+nginx/logs/
+
+# Ignora i file delle migrazioni Django (tranne __init__.py)
+**/migrations/*.py
+
+# Ignora i file di configurazione di Docker
+.dockerignore

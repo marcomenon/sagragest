@@ -1,0 +1,179 @@
+{% extends 'sagrarapid/rapid_base.html' %}
+{% load static %}
+{% load partials %}
+{% load filters %}
+
+{% block title %}Dashboard SagraRapid{% endblock %}
+
+{% block content %}
+    <div class="flex flex-col h-screen bg-base-200">
+        <div class="my-12 text-center">
+            <h1 class="text-4xl font-bold mt-4">Dashboard SagraRapid</h1>
+            <p class="mt-6 text-2xl text-balance sm:text-balance xs:block xs:w-full xs:[word-break:break-word] xs:[hyphens:auto]">
+                Benvenuto nella dashboard<br class="block md:hidden" /> per l'inserimento rapido degli ordini.
+            </p>
+        </div>
+        <div class="bg-base-100 shadow-lg rounded-lg max-w-2xl mx-4 sm:mx-auto sm:w-full my-4 p-4">
+            <!-- Selezione evento -->
+            <label class="block text-xl text-base-content font-semibold mb-1">Evento</label>
+            <select class="select select-bordered w-full text-lg" 
+                    hx-get="{% url 'rapid-dashboard' %}"
+                    hx-target="#container"
+                    hx-trigger="change"
+                    name="event_id">
+                <option value="">Seleziona evento...</option>
+                {% for event in events %}
+                    <option value="{{ event.id }}">{{ event.name }} ({{ event.year }})</option>
+                {% endfor %}
+            </select>
+            <div id="container" class="my-4"> {% partial container %} </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% partialdef container %}
+{% if full_interface %}
+    <div class="rounded-lg bg-base-100 shadow border border-base-300 mb-4 w-full text-lg pb-4">
+        <div class="flex items-center justify-between bg-base-200 rounded-t-lg py-2 border-b border-base-300 mb-2 px-4">
+            <div class="flex items-center gap-2">
+                <span class="font-semibold uppercase text-lg">Interfaccia:</span>
+                <span class="font-semibold">{{ full_interface.interface.event_name }}</span>
+            </div>
+            <button class="btn btn-xs btn-ghost btn-square text-lg text-error font-bold" title="Elimina interfaccia">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div id="category-container" class="mb-2 flex items-center gap-2 px-4">
+            <span class="font-semibold">Categoria:</span> {{ full_interface.interface.category_name }}
+            <button class="btn btn-outline btn-info ml-2 align-middle text-base" title="Cambia categoria"
+                hx-post="{% url 'rapid-change-category' %}"
+                hx-target="#category-container"
+                hx-vals='{"form": true, "event_id": {{ event.id }}, "category_id": {{ full_interface.interface.category_event_id }} }'>
+                Cambia
+            </button>
+        </div>
+        <div class="mt-4 px-4">
+            <span class="font-semibold">Righe:</span>
+            <div class="flex flex-col gap-4 mt-2">
+                {% for row in full_interface.rows %}
+                    <div class="rounded-lg bg-base-100 shadow border border-base-300 mb-4 w-full">
+                        <div class="flex items-center justify-between bg-base-200 rounded-t-lg px-4 py-2 border-b border-base-300">
+                            <div class="flex items-center gap-2">
+                                <button class="btn btn-xs btn-ghost btn-square text-lg font-bold" title="Sposta riga su"
+                                        hx-post="{% url 'rapid-move-row' %}"
+                                        hx-vals='{"row_id": {{ row.row_id }}, "direction": "up", "event_id": {{ event.id }} }'
+                                        hx-target="#container">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+                                </svg>
+                                </button>
+                                <span class="font-semibold uppercase text-lg">Riga {{ row.row_position }}</span>
+                                <button class="btn btn-xs btn-ghost btn-square text-lg font-bold" title="Sposta riga giù"
+                                        hx-post="{% url 'rapid-move-row' %}"
+                                        hx-vals='{"row_id": {{ row.row_id }}, "direction": "down", "event_id": {{ event.id }} }'
+                                        hx-target="#container">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                                </svg>
+                                </button>
+                            </div>
+                            <button class="btn btn-xs btn-ghost btn-square text-lg text-error font-bold" title="Elimina riga">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="flex flex-wrap gap-2 p-4">
+                            {% for elem in row.elements %}
+                                <div class="badge badge-xl badge-outline flex items-center gap-2 px-4 py-2 bg-base-100 border-base-300">
+                                    <button class="btn btn-xs btn-ghost btn-square p-0" title="Sposta su"
+                                            hx-post="{% url 'rapid-move-element' %}"
+                                            hx-vals='{"element_id": {{ elem.element_id }}, "direction": "up", "event_id": {{ event.id }} }'
+                                            hx-target="#container">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                                        </svg>
+                                    </button>
+                                    <span class="font-bold text-base">{{ elem.product_name }}</span>
+                                    <button class="btn btn-xs btn-ghost btn-square p-0" title="Sposta giù"
+                                            hx-post="{% url 'rapid-move-element' %}"
+                                            hx-vals='{"element_id": {{ elem.element_id }}, "direction": "down", "event_id": {{ event.id }} }'
+                                            hx-target="#container">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                                        </svg>
+                                    </button>
+                                    <button class="btn btn-xs btn-ghost btn-square p-0 text-error" title="Elimina elemento">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <div class="flex items-center gap-2 border-t border-base-300 px-4 py-2 bg-base-100">
+                            <select class="select select-bordered" name="product_event_id" id="select-add-element-{{ row.row_id }}">
+                                <option value="">Scegli prodotto...</option>
+                                {% for product in productevents %}
+                                    {% if product.id|stringformat:'s' not in row.elements|pluck:'product_event_id' %}
+                                        <option value="{{ product.id }}">{{ product.product.name }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                            <button class="btn btn-primary btn-square" title="Aggiungi elemento"
+                                    hx-post="{% url 'rapid-add-element' %}"
+                                    hx-target="#container"
+                                    hx-include="#select-add-element-{{ row.row_id }}"
+                                    hx-vals='{"row_id": "{{ row.row_id }}", "event_id": "{{ event.id }}"}'>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="border-t border-base-300 pt-4 px-4 mt-4">
+            <button class="btn btn-primary w-full" title="Aggiungi riga">AGGIUNGI RIGA</button>
+        </div>
+    </div>
+    <pre>{{ full_interface|json_script:"full-interface-json" }}</pre>
+    <script>
+        (function() {
+            const data = JSON.parse(document.getElementById('full-interface-json').textContent);
+            // Puoi usare 'data' per altre logiche JS qui dentro
+        })();
+    </script>
+{% elif event %}
+    <div class="alert alert-warning text-lg">Nessuna interfaccia rapida configurata per questo evento.</div>
+{% else %}
+    <div class="alert alert-info text-lg">Seleziona un evento per visualizzare l’interfaccia rapida.</div>
+{% endif %}
+{% endpartialdef %}
+
+{% partialdef category-form %}
+<select class="select select-bordered" name="category_id" id="select-add-row-category">
+    <option value="">Scegli categoria...</option>
+    {% for cat in categoryevents %}
+        <option value="{{ cat.id }}">{{ cat.category.name }}</option>
+    {% endfor %}
+</select>
+<div class="flex gap-2">
+    <button class="btn btn-info" title="Cambia categoria"
+        hx-post="{% url 'rapid-change-category' %}"
+        hx-target="#container"
+        hx-vals='{"event_id": {{ event.id }} }'
+        hx-include="#select-add-row-category">
+        Cambia
+    </button>
+    <button class="btn btn-outline" title="Annulla"
+        hx-get="{% url 'rapid-dashboard' %}"
+        hx-target="#container"
+        hx-vals='{"event_id": {{ event.id }} }'>
+        Annulla
+    </button>
+</div>
+{% endpartialdef %}

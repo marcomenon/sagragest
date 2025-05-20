@@ -1,0 +1,23 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="it" data-theme="{{ theme }}">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Django Boilerplate{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="{% static 'output.css' %}" rel="stylesheet">
+    <script src="{% static 'js/htmx.js' %}" defer></script>
+    <script src="{% static 'js/alpine.js' %}" defer></script>
+    <script src="{% static 'js/chart.js' %}" defer></script>
+    {% block extra_head %}{% endblock %}
+</head>
+<body hx-headers='{"x-csrftoken": "{{ csrf_token }}"}'>
+    <div id="navbar">{% include "navbar.html" %}</div>
+    <div id="main" class="scrollbar-hidden">
+        {% block content %}
+        {% endblock %}
+    </div>
+    </div id="footer">{% include "footer.html" %}</div>
+    {% block extra_body %}{% endblock %}
+</body>
+</html>

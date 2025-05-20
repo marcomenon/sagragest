@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+@plugin "daisyui" {
+  themes: all;
+}
+
+/* roboto-regular - latin */
+@font-face {
+  font-display: swap;
+  font-family: 'Roboto';
+  font-style: normal;
+  font-weight: 400;
+  src: url('/static/fonts/roboto/roboto-v47-latin-regular.woff2') format('woff2');
+}
+
+/* roboto-italic - latin */
+@font-face {
+  font-display: swap;
+  font-family: 'Roboto';
+  font-style: italic;
+  font-weight: 400;
+  src: url('/static/fonts/roboto/roboto-v47-latin-italic.woff2') format('woff2');
+}
+
+/* roboto-700 - latin */
+@font-face {
+  font-display: swap;
+  font-family: 'Roboto';
+  font-style: normal;
+  font-weight: 700;
+  src: url('/static/fonts/roboto/roboto-v47-latin-700.woff2') format('woff2');
+}
+
+body {
+  font-family: 'Roboto', sans-serif;
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+#main {
+  flex: 1;
+  overflow-y: auto;
+}
+
+#navbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+#footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 50;
+}
+
+/* Custom scrollbar */
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+}
+
+/* Scrollbar completamente nascosta */
+.scrollbar-hidden {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;             /* Chrome, Safari, Opera */
+}

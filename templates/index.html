@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}{{ site_name }}{% endblock %}
+{% block content %}
+
+<div class="text-center mt-8 mb-4 mx-8">
+  <h1 class="text-4xl font-bold mb-4">Benvenuto in {{ site_name }}</h1>
+  <p class="text-lg text-gray-500 mb-8">Questa è la homepage placeholder. Personalizzala come vuoi!</p>
+  <a href="{% url 'account_login' %}" class="btn btn-primary btn-lg items-center gap-2">
+    <img src="{% static 'img/logo.png' %}" alt="Logo" class="w-10 h-10">
+    <span class="text-xl font-semibold">{% if user.is_authenticated %}{{ site_name }}{% else %}Accedi{% endif %}</span>
+  </a>
+</div>
+{% endblock %}

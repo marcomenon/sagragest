@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Layout Stampa Ordine</title>
+    <style>
+        body {
+            font-size: 50px;
+            width: 98%;
+            max-width: 98%;
+            margin: 0 auto;
+        }
+        pre, code, .escpos-text {
+            font-size: 50px;
+        }
+        @page {
+            margin: 0;
+            size: auto;
+        }
+        body { font-family: Arial, sans-serif; text-transform: uppercase; }
+        .header, .order-info, .order-total {
+            font-size: 50px !important;
+        }
+        .header { font-weight: bold; text-align: center; text-transform: uppercase; }
+        .order-info { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem 1.5rem; font-size: 1rem; }
+        .order-info span { color: #444; }
+        .order-info .label { font-weight: bold; }
+        .order-type {
+            font-size: 50px !important;
+            grid-column: 1 / -1;
+            text-align: center;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .order-products-header, .order-product-row { display: flex; flex-direction: row; }
+        .order-products-header > div,
+        
+        .order-products-header > div:first-child,
+        .order-product-row > div:first-child {
+            flex: 1 1 0;
+            min-width: 0;
+            text-transform: uppercase;
+        }
+        .order-product-row > div.text-center {
+            flex-basis: 15%;
+            max-width: 15%;
+            min-width: 0;
+            text-align: center;
+        }
+        .order-product-row > div.text-right {
+            flex-basis: 30%;
+            max-width: 30%;
+            min-width: 0;
+            text-align: right;
+        }
+        .order-product-note { font-style: italic; color: #666; font-size: 0.95em; }
+        .order-total { display: flex; justify-content: flex-end; align-items: center; font-size: 1.3rem; font-weight: bold; border-top: 2px solid #ccc; }
+        .note { font-style: italic; color: #666; }
+    </style>
+</head>
+<body>
+    <img src="template_banner.png" alt="" style="width:100%;margin-bottom:1.2em;">
+    <div class="print-banner" style="background: #222; color: #fff; text-align: center; padding: 0.7em 0; font-size: 1.1em; letter-spacing: 0.1em; margin-bottom: 1.2em;">
+        {{ order.event.name|upper }} {{ order.event.year }}
+    </div>
+    <div class="header">Ordine #{{ order.number }}</div>
+    <div class="order-info" style="display: block;">
+        <div><span class="label">Stato:</span> {{ order.get_status_display }}</div>
+        <div><span class="label">Data:</span> {{ order.created_at|date:'d/m/Y H:i' }}</div>
+        {% if order.event.option_client %}
+            <div><span class="label">Cliente:</span> {{ order.client }}</div>
+        {% endif %}
+        {% if order.event.option_table %}
+            <div><span class="label">Tavolo:</span> {{ order.table_number }}</div>
+        {% endif %}
+        {% if order.event.option_cover %}
+            <div><span class="label">Coperti:</span> {{ order.cover }}</div>
+        {% endif %}
+        <div class="order-type">
+            {% if order.is_takeaway %}Asporto{% else %}Servito{% endif %}
+        </div>
+        {% if order.notes %}
+        <div><span class="label">Note:</span> <span class="note">{{ order.notes|default:"-" }}</span></div>
+        {% endif %}
+    </div>
+
+    {% if order.event.pay_takeaway != 0 and order.is_takeaway and order.extra_price != 0 %}
+        <div class="order-product-row">
+            <div>Sup Asporto</div>
+            <div class="text-center">1,00</div>
+            <div class="text-right">€ {{ order.extra_price }}</div>
+        </div>
+    {% elif order.event.pay_cover != 0 and not order.is_takeaway and order.extra_price != 0 %}
+        <div class="order-product-row">
+            <div>Sup Servito</div>
+            <div class="text-center">{{ order.cover|floatformat:2 }}</div>
+            <div class="text-right">€ {{ order.extra_price }}</div>
+        </div>
+    {% endif %}
+
+    {% for item in items %}
+    <div class="order-product-row">
+        <div>{{ item.product_event.product.name|upper }}</div>
+        <div class="text-center">{{ item.quantity|floatformat:2 }}</div>
+        <div class="text-right">€ {{ item.total_price|floatformat:2 }}</div>
+    </div>
+    {% if item.note %}
+    <div class="order-product-note">Nota: {{ item.note }}</div>
+    {% endif %}
+    {% endfor %}
+    
+    <div class="order-total">
+        Totale: € {{ order.total|floatformat:2 }}
+    </div>
+</body>
+</html>

@@ -1,0 +1,391 @@
+sudo apt-get update && sudo apt-get upgrade -y
+
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do
+  sudo apt-get remove -y $pkg || true
+done
+
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo tee /etc/apt/keyrings/docker.asc > /dev/null
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+sudo apt update
+
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+sudo systemctl enable docker.service
+sudo systemctl enable containerd.service
+
+sudo groupadd docker || true
+sudo usermod -aG docker $USER
+
+newgrp docker
+
+mkdir -p sagragest/{django,nginx,cups/cupsd,postgres-data,media,static}
+cd sagragest
+
+touch docker-compose.yml .env
+
+cd django && touch Dockerfile requirements.txt
+cd ../nginx && touch nginx.conf
+cd ../cups && touch Dockerfile
+cd ..
+
+cat > .env <<EOF
+# 🔐 Sicurezza
+DJANGO_SECRET_KEY=supersegreto_sicuro_1234567890
+
+# 🗄️ Database PostgreSQL
+POSTGRES_DB=nome_db
+POSTGRES_USER=utente
+POSTGRES_PASSWORD=password
+POSTGRES_HOST=db
+POSTGRES_PORT=5432
+
+# 🌐 Host consentiti
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+# 🔁 Redis
+REDIS_URL=redis://redis:6379/1
+
+# 🧾 Static & Media (assoluti nel container)
+STATIC_ROOT=/app/static
+MEDIA_ROOT=/app/media
+
+# ✉️ Email SMTP
+DJANGO_EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+DJANGO_EMAIL_HOST=smtp.tuodominio.com
+DJANGO_EMAIL_PORT=587
+DJANGO_EMAIL_HOST_USER=utente@tuodominio.com
+DJANGO_EMAIL_HOST_PASSWORD=superpassword
+DJANGO_EMAIL_USE_TLS=True
+
+# 🖨️ CUPS server
+CUPS_SERVER=http://cups:631
+
+# 🐍 Python
+DJANGO_ENV=prod
+DJANGO_SUPERUSER_USERNAME=admin
+DJANGO_SUPERUSER_EMAIL=admin@example.com
+DJANGO_SUPERUSER_PASSWORD=superpassword
+EOF
+
+cat > docker-compose.yml <<'EOF'
+version: "3.8"
+
+services:
+
+  db:
+    image: postgres:16
+    restart: always
+    env_file: .env
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    shm_size: 128mb
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - backend
+
+  redis:
+    image: redis:alpine
+    restart: always
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - backend
+
+  django:
+    build: ./django
+    env_file: .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
+    volumes:
+      - static_data:/app/static
+      - media_data:/app/media
+      - gunicorn_socket:/run
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - backend
+
+  nginx:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - static_data:/static:ro
+      - media_data:/media:ro
+      - gunicorn_socket:/run:ro
+    depends_on:
+      - django
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - backend
+
+  cups:
+    build: ./cups
+    restart: always
+    ports:
+      - "631:631"
+    volumes:
+      - ./cups/cupsd:/etc/cups
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - backend
+
+volumes:
+  static_data:
+  media_data:
+  gunicorn_socket:
+  postgres-data:
+  redis-data:
+
+networks:
+  backend:
+EOF
+
+cat > django/requirements.txt <<EOF
+asgiref==3.8.1
+brotli==1.1.0
+cffi==1.17.1
+cssselect2==0.8.0
+defusedxml==0.7.1
+diff-match-patch==20241021
+django==5.2
+django-allauth==65.7.0
+django-filter==25.1
+django-htmx==1.23.0
+django-import-export==4.3.7
+django-template-partials==24.4
+django-templatetag-sugar==1.0
+django-widget-tweaks==1.5.0
+et-xmlfile==2.0.0
+fonttools==4.57.0
+gunicorn==23.0.0
+numpy==2.2.5
+odfpy==1.4.1
+openpyxl==3.1.5
+packaging==25.0
+pandas==2.2.3
+pillow==11.2.1
+pycparser==2.22
+pycups==2.0.4
+pydyf==0.11.0
+pyphen==0.17.2
+python-dateutil==2.9.0.post0
+python-dotenv==1.1.0
+pytz==2025.2
+pyyaml==6.0.2
+psycopg[binary]
+redis==6.1.0
+six==1.17.0
+sqlparse==0.5.3
+tablib==3.8.0
+tabulate==0.9.0
+tinycss2==1.4.0
+tinyhtml5==2.0.0
+tzdata==2025.2
+weasyprint==65.1
+webencodings==0.5.1
+xlrd==2.0.1
+xlwt==1.3.0
+zopfli==0.2.3.post1
+EOF
+
+cat > nginx/nginx.conf <<'EOF'
+events {}
+http {
+    server {
+        listen 80;
+
+        location /static/ {
+            alias /static/;
+        }
+
+        location /media/ {
+            alias /media/;
+        }
+
+        location / {
+            proxy_pass http://django:8000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+        }
+    }
+}
+EOF
+
+cat > cups/Dockerfile <<'EOF'
+FROM debian:bookworm-slim
+
+RUN apt-get update && apt-get install -y cups && \
+    sed -i 's/Listen localhost:631/Port 631/' /etc/cups/cupsd.conf && \
+    sed -i '/<Location \/>/,/<\/Location>/ s/Require local/Allow all/' /etc/cups/cupsd.conf && \
+    sed -i '/<Location \/admin>/,/<\/Location>/ s/Require local/Allow all/' /etc/cups/cupsd.conf && \
+    sed -i '/<Location \/admin\/conf>/,/<\/Location>/ s/Require local/Allow all/' /etc/cups/cupsd.conf && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+CMD ["/usr/sbin/cupsd", "-f"]
+EOF
+
+cat > docker-compose.override.yml <<'EOF'
+version: "3.8"
+
+services:
+
+  django:
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      DJANGO_ENV: dev
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on: []  # niente redis o db
+    networks:
+      - backend
+
+  cups:
+    build: ./cups
+    restart: always
+    ports:
+      - "631:631"
+    volumes:
+      - ./cups/cupsd:/etc/cups
+    networks:
+      - backend
+EOF
+
+cat > django/Dockerfile <<EOF
+FROM python:3.13.3-slim-bookworm
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Installa dipendenze di sistema per pacchetti Python come weasyprint, pycups, ecc.
+RUN apt-get update && apt-get install -y \
+    libcups2-dev \
+    libffi-dev \
+    libxml2-dev \
+    libxslt1-dev \
+    libjpeg-dev \
+    zlib1g-dev \
+    libmagic1 \
+    libglib2.0-dev \
+    shared-mime-info \
+    curl \
+    ca-certificates \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Copia uv e installa
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+# Copia requirements e installa pacchetti
+COPY requirements.txt .
+RUN uv pip install -r requirements.txt --system
+
+# Copia il progetto
+COPY . .
+
+# Assicura che il socket venga creato in /run
+RUN mkdir -p /run && chmod 777 /run
+
+# Copia entrypoint
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Esegui lo script
+CMD ["/entrypoint.sh"]
+EOF
+
+cat > django/entrypoint.sh <<EOF
+#!/bin/bash
+set -e
+
+echo "[django] Applico le migration..."
+python manage.py migrate --noinput
+
+echo "[django] Colleziono static..."
+python manage.py collectstatic --noinput
+
+# Crea superuser solo se non esiste
+echo "[django] Verifico superuser..."
+python manage.py shell <<PYTHON_EOF
+from django.contrib.auth import get_user_model
+import os
+
+User = get_user_model()
+username = os.environ.get("DJANGO_SUPERUSER_USERNAME", "admin")
+email = os.environ.get("DJANGO_SUPERUSER_EMAIL", "admin@example.com")
+password = os.environ.get("DJANGO_SUPERUSER_PASSWORD", "changeme")
+
+if not User.objects.filter(username=username).exists():
+    print(f"[django] Creo superuser '{username}'")
+    User.objects.create_superuser(username=username, email=email, password=password)
+else:
+    print(f"[django] Superuser '{username}' già presente")
+PYTHON_EOF
+
+echo "[django] Avvio Gunicorn..."
+exec uv gunicorn --bind unix:/run/gunicorn.sock --umask 007 core.wsgi:application
+EOF
+
+sudo timedatectl set-timezone Europe/Rome
+
+
+sudo dnf install gcc cups-devel python3.13-devel cups-pdf
+uv sync
+uv run manage.py makemigrations accounts printers reports sagragest sagrarapid --noinput
+uv run manage.py migrate --noinput
+uv run manage.py collectstatic --noinput
+
+mkdir -p ~/.npm-global
+npm config set prefix '~/.npm-global'
+export PATH="$HOME/.npm-global/bin:$PATH"
+echo 'export PATH="$HOME/.npm-global/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+npm install -g pnpm

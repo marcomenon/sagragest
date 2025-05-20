@@ -1,0 +1,446 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load partials %}
+{% load filters %}
+
+{% block title %}Nuovo Ordine{% endblock %}
+
+{% block content %}
+<script>
+function getCSRFToken() {
+  // Cerca nel form
+  let token = document.querySelector('[name=csrfmiddlewaretoken]');
+  if (token) return token.value;
+  // Cerca nel meta tag
+  token = document.querySelector('meta[name="csrf-token"]');
+  if (token) return token.content;
+  // Cerca nell'attributo hx-headers del body (HTMX)
+  const body = document.querySelector('body');
+  if (body && body.hasAttribute('hx-headers')) {
+    try {
+      const headers = JSON.parse(body.getAttribute('hx-headers'));
+      if (headers['x-csrftoken']) return headers['x-csrftoken'];
+    } catch (e) {}
+  }
+  return '';
+}
+</script>
+<script>
+function orderSession() {
+  return {
+    showSidebar: false,
+    // Toast properties
+    toast: {
+      show: false,
+      type: 'info', // info, success, warning
+      message: '',
+    },
+    toastTimeout: null,
+    selectedDaytimeId: {{ selected_daytime.id|default:'null' }},
+    table: {{ order.table_number|default:'null' }},
+    cover: {{ order.cover|default:'null' }},
+    isTakeaway: {{ order.is_takeaway|yesno:'true,false'|default:'false' }},
+    notes: "{{ order.notes|default:''|escapejs }}",
+    cash: 0,
+    items: {{ order_items|default:'[]'|safe }},
+    orderId: {{ order.id|default:'null' }},
+    client: "{{ order.client|default:''|escapejs }}",
+    extra_price: 0,
+    pay_cover: parseFloat("{{ selected_daytime.event.pay_cover|default:'0'|floatformat:'2'|replace:",." }}"),
+    pay_takeaway: parseFloat("{{ selected_daytime.event.pay_takeaway|default:'0'|floatformat:'2'|replace:",." }}"),
+    option_cover: {{ selected_daytime.event.option_cover|yesno:"true,false" }},
+    option_client: {{ selected_daytime.event.option_client|yesno:"true,false" }},
+    option_table: {{ selected_daytime.event.option_table|yesno:"true,false" }},
+    addItem(product) {
+      const existing = this.items.find(i => i.id == product.id);
+      // Conversione sicura del prezzo: sostituisci la virgola con il punto prima del parseFloat
+      const price = parseFloat((product.price + '').replace(',', '.'));
+      if (existing) {
+        existing.qty += 1;
+      } else {
+        this.items.push({ ...product, qty: 1, note: '', price });
+      }
+    },
+    get total() {
+      return this.items.reduce((sum, item) => sum + item.qty * item.price, 0) + parseFloat(this.extra_price || 0);
+    },
+    get change() {
+      return Math.max(0, this.cash - this.total);
+    },
+    resetForm() {
+      this.table = '';
+      this.cover = '';
+      this.isTakeaway = false;
+      this.notes = '';
+      this.cash = 0;
+      this.items = [];
+      this.orderId = null;
+    },
+    showToast(type, message) {
+      this.toast.type = type;
+      this.toast.message = message;
+      this.toast.show = true;
+      clearTimeout(this.toastTimeout);
+      this.toastTimeout = setTimeout(() => {
+        this.toast.show = false;
+      }, 3000);
+    },
+    submitOrder(print = false) {
+      if (
+        (!this.isTakeaway && this.option_client && !this.client) ||
+        (!this.isTakeaway && this.option_table && (!this.table || Number(this.table) < 1)) ||
+        (!this.isTakeaway && this.option_cover && (!this.cover || Number(this.cover) < 1)) ||
+        this.items.length === 0
+      ) {
+        this.showToast('warning', "Compila tutti i campi obbligatori e aggiungi almeno un prodotto.");
+        return;
+      }
+      const data = {
+        client: this.client,
+        table: this.table,
+        cover: this.cover,
+        is_takeaway: this.isTakeaway,
+        notes: this.notes,
+        items: this.items,
+        total: this.total,
+        extra_price: this.extra_price, // aggiunto invio extra_price
+        print: print,
+        daytime_id: this.selectedDaytimeId,
+        order_id: this.orderId
+      };
+      const csrfToken = getCSRFToken();
+      fetch("{% url 'submit-order' %}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": csrfToken
+        },
+        body: JSON.stringify(data)
+      }).then(response => {
+        if (response.ok) {
+          if (print) {
+            this.showToast('success', 'Ordine salvato e stampato con successo!');
+          } else {
+            this.showToast('info', 'Ordine salvato con successo!');
+          }
+          this.resetForm();
+        } else {
+          this.showToast('warning', "Errore nel salvataggio dell'ordine.");
+        }
+      });
+    },
+    updateExtra() {
+      if (this.isTakeaway) {
+        this.extra_price = this.pay_takeaway || 0;
+      } else if (this.option_cover) {
+        this.extra_price = (this.cover && this.cover >= 1) ? (this.pay_cover || 0) * this.cover : 0;
+      } else {
+        this.extra_price = 0;
+      }
+    },
+  };
+}
+</script>
+
+<script>
+document.body.addEventListener('htmx:afterSwap', function(e) {
+  if (e.target && e.target.id === 'order-main-content') {
+    Alpine.nextTick(() => {
+      const data = document.getElementById('order-session-data');
+      if (!data) return;
+      // Cerca il wrapper Alpine più vicino al main aggiornato
+      const alpine = document.querySelector('[x-data]');
+      if (!alpine || !window.Alpine || typeof window.Alpine.$data !== 'function') return;
+      const store = window.Alpine.$data(alpine);
+      store.selectedDaytimeId = parseInt(data.dataset.selectedDaytimeId) || null;
+      store.pay_cover = parseFloat(data.dataset.payCover.replace(',', '.')) || 0;
+      store.pay_takeaway = parseFloat(data.dataset.payTakeaway.replace(',', '.')) || 0;
+      store.option_cover = data.dataset.optionCover === 'true';
+      store.option_client = data.dataset.optionClient === 'true';
+      store.option_table = data.dataset.optionTable === 'true';
+      if (typeof store.updateExtra === 'function') store.updateExtra();
+    });
+  }
+});
+</script>
+<!-- Wrapper Alpine -->
+<div x-data="orderSession()" class="flex">
+  <!-- Toast message -->
+  <div x-show="toast.show" x-transition class="fixed top-6 right-6 z-50">
+    <div :class="{
+      'bg-blue-500': toast.type === 'info',
+      'bg-green-500': toast.type === 'success',
+      'bg-yellow-500': toast.type === 'warning',
+      'text-white': true,
+      'shadow-lg': true,
+      'rounded-lg': true,
+      'px-6': true,
+      'py-4': true,
+      'mb-4': true
+    }">
+      <span x-text="toast.message"></span>
+    </div>
+  </div>
+  {% if user.is_superuser %}
+  <!-- Sidebar sinistra per super admin, sempre visibile e a tutta altezza -->
+  <aside class="hidden md:flex flex-col my-8 ml-8 p-6 rounded-lg bg-base-200 shadow-lg" x-show="showSidebar" x-transition>
+    <div class="flex justify-between items-center mb-2">
+      <label class="font-semibold text-lg text-neutral">Giornata:</label>
+      <button @click="showSidebar = false" class="ml-2 text-error hover:text-red-600" title="Nascondi barra">
+        <!-- x-mark icon -->
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="flex flex-col gap-2">
+      {% for d in daytimes %}
+        <button type="button"
+                class="btn w-full"
+                :class="selectedDaytimeId === {{ d.id }} ? 'btn-primary' : 'btn-outline'"
+                @click="selectedDaytimeId = {{ d.id }}"
+                hx-get="{% url 'order-entry' %}?daytime_id={{ d.id }}"
+                hx-target="#order-main-content"
+                hx-swap="innerHTML"
+                name="daytime_id"
+                value="{{ d.id }}">
+          {{ d.event.name }}<br>
+          <span class="text-xs">{{ d.start|date:'d/m/Y H:i' }}{% if not d.end %} (Attiva){% else %}(Non Attiva){% endif %}</span>
+        </button>
+      {% endfor %}
+    </div>
+  </aside>
+  {% endif %}
+
+  <!-- Colonna destra: header, contenuto, footer -->
+  <main class="flex flex-col w-full" id="order-main-content">
+    {% partial order-main-content %}
+  </main>
+  <div style="display:none">
+    <span x-effect="updateExtra()" x-bind:key="isTakeaway + '-' + cover"></span>
+  </div>
+</div>
+
+{% endblock %}
+
+{% partialdef order-main-content %}
+  <!-- Intestazione ordine -->
+  <div class="bg-base-200 p-6 rounded-lg shadow-lg m-8 relative">
+    {% partial order-header %}
+    <!-- Icona mostra sidebar solo per superadmin -->
+    {% if user.is_superuser %}
+    <template x-if="!showSidebar">
+      <button @click="showSidebar = true" class="absolute left-0 top-0 mt-2 ml-2 z-50 bg-base-200 rounded-full p-2 shadow-lg border border-base-300" title="Mostra barra giornate">
+        <!-- bars-3 icon -->
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5m-16.5 5.25h16.5m-16.5 5.25h16.5"/></svg>
+      </button>
+    </template>
+    {% endif %}
+  </div>
+
+  <!-- Elemento nascosto con i dati di sessione per AlpineJS -->
+  <span id="order-session-data" style="display:none"
+    data-selected-daytime-id="{{ selected_daytime.id|default:'null' }}"
+    data-pay-cover="{{ selected_daytime.event.pay_cover|default:'0'|floatformat:'2'|replace:",." }}"
+    data-pay-takeaway="{{ selected_daytime.event.pay_takeaway|default:'0'|floatformat:'2'|replace:",." }}"
+    data-option-cover="{{ selected_daytime.event.option_cover|yesno:'true,false' }}"
+    data-option-client="{{ selected_daytime.event.option_client|yesno:'true,false' }}"
+    data-option-table="{{ selected_daytime.event.option_table|yesno:'true,false' }}"
+  ></span>
+
+  <!-- Contenuto centrale: order-entry-left e order-summary come due blocchi separati -->
+  <div class="flex flex-col md:flex-row gap-8 px-4 xl:px-8">
+    <div class="w-full md:w-2/3 bg-base-200 p-6 rounded-lg shadow-lg">
+      <div id="order-entry-content" x-data="{ activeCategoryId: {{ selected_category.id }} }">
+        {% partial order-entry-left %}
+      </div>
+    </div>
+    <div class="w-full md:w-1/3 bg-base-200 p-6 rounded-lg shadow-lg">
+      {% partial order-summary %}
+    </div>
+  </div>
+
+  <!-- Footer ordine -->
+  <div class="bg-base-200 m-8 p-6 rounded-lg shadow-lg">
+    {% partial order-footer %}
+  </div>
+{% endpartialdef %}
+
+{% partialdef order-entry-left %}
+  {% partial order-category-tabs %}
+  {% partial order-product-tiles %}
+{% endpartialdef %}
+
+{% partialdef order-footer %}
+<div class="flex flex-col gap-6">
+  <!-- Riga: Card contanti/resto a sinistra, totale a destra -->
+  <div class="flex flex-col md:flex-row justify-between items-center gap-6 w-full">
+    <!-- Card Extra -->
+    <div class="bg-base-100 rounded-xl px-6 py-4 shadow-lg flex flex-col items-center min-w-[180px] w-full md:w-auto order-1 md:order-2"
+         x-show="pay_cover > 0 || pay_takeaway > 0">
+      <span class="text-lg font-bold">Extra</span>
+      <span x-show="isTakeaway">Asporto: <span x-text="Number(extra_price).toFixed(2)"></span></span>
+      <span x-show="!isTakeaway && option_cover">Coperto: <span x-text="Number(extra_price).toFixed(2)"></span></span>
+      <span x-show="!isTakeaway && !option_cover">NO EXTRA</span>
+    </div>
+    <!-- Totale -->
+    <div class="order-2 md:order-3 bg-primary text-white rounded-xl px-8 py-4 text-3xl font-extrabold shadow-lg flex items-center gap-4 min-w-[220px] justify-center ml-0 md:ml-auto w-full md:w-auto mb-4 md:mb-0">
+      <!-- currency-euro icon -->
+      <svg class="h-8 w-8" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M17.25 17.25A6.75 6.75 0 1 1 12 5.25m-3.75 6h7.5m-7.5 3h7.5"/></svg>
+      <span x-text="`€ ${total.toFixed(2)}`"></span>
+    </div>
+    <!-- Contanti e Resto (card) -->
+    <div class="bg-base-100 rounded-xl px-6 py-4 shadow-lg flex flex-col md:flex-row items-center gap-6 min-w-[260px] w-full md:w-auto order-3 md:order-1">
+      <div class="flex items-center gap-2">
+        <span class="text-lg font-bold">Contanti</span>
+        <span @click="cash = Math.max(0, parseFloat(cash) - 1)" class="cursor-pointer p-1 rounded hover:bg-base-200">
+          <!-- minus icon -->
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12h12"/></svg>
+        </span>
+        <input type="number" class="input input-bordered input-primary w-20 text-lg text-center" placeholder="Contanti" x-model="cash" min="0" />
+        <span @click="cash = parseFloat(cash) + 1" class="cursor-pointer p-1 rounded hover:bg-base-200">
+          <!-- plus icon -->
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6"/></svg>
+        </span>
+      </div>
+      <div class="flex items-center gap-2 ml-0 md:ml-6">
+        <span class="text-lg font-bold">Resto</span>
+        <span class="flex items-center gap-1 text-2xl font-bold text-success">
+          <!-- banknotes icon -->
+          <svg class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect width="18" height="10.5" x="3" y="7.5" rx="2.25"/><circle cx="12" cy="12.75" r="1.5"/><path stroke-linecap="round" stroke-linejoin="round" d="M18 8.25v1.5m0 5.25v1.5M6 8.25v1.5m0 5.25v1.5"/></svg>
+          <span x-text="change.toFixed(2)"></span> €
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pulsanti azione -->
+  <div class="flex flex-col md:flex-row justify-between items-center gap-4 mt-4">
+    <button class="btn btn-error btn-lg flex items-center gap-2 w-full md:w-auto" @click="resetForm">
+      <!-- arrow-path icon -->
+      <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12a7.5 7.5 0 1 1 7.5 7.5m0 0v-3m0 3h3"/></svg>
+      Reset
+    </button>
+    <div class="flex flex-col md:flex-row gap-4 w-full md:w-auto justify-end">
+      <button class="btn btn-primary btn-lg flex items-center gap-2 w-full md:w-auto" @click="submitOrder(false)">
+        <!-- check-circle icon -->
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75l2.25 2.25 4.5-4.5"/><circle cx="12" cy="12" r="9"/></svg>
+        Salva
+      </button>
+      <button class="btn btn-success btn-lg flex items-center gap-2 w-full md:w-auto" @click="submitOrder(true)">
+        <!-- printer icon -->
+        <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 9V5.25A2.25 2.25 0 0 1 9 3h6a2.25 2.25 0 0 1 2.25 2.25V9m-12 0A2.25 2.25 0 0 0 3 11.25v3A2.25 2.25 0 0 0 5.25 16.5h.75v2.25A2.25 2.25 0 0 0 8.25 21h7.5a2.25 2.25 0 0 0 2.25-2.25V16.5h.75A2.25 2.25 0 0 0 21 14.25v-3A2.25 2.25 0 0 0 18.75 9h-13.5Z"/></svg>
+        Salva & Stampa
+      </button>
+    </div>
+  </div>
+</div>
+{% endpartialdef %}
+
+{% partialdef order-header %}
+<div class="grid grid-cols-3 gap-4">
+  {% if selected_daytime.event.option_client %}
+    <input type="text" class="input input-bordered w-full input-primary" placeholder="Cliente" x-model="client" />
+  {% endif %}
+  {% if selected_daytime.event.option_table %}
+    <input type="number" class="input input-bordered w-full input-primary" placeholder="Tavolo" x-model="table" min="1" />
+  {% endif %}
+  {% if selected_daytime.event.option_cover %}
+    <input type="number" class="input input-bordered w-full input-primary" placeholder="Coperti" x-model="cover" min="1" />
+  {% endif %}
+  <label class="flex items-center space-x-3">
+    <input type="checkbox" class="checkbox checkbox-primary" x-model="isTakeaway" />
+    <span class="font-medium">Asporto</span>
+  </label>
+</div>
+<input type="text" class="input input-bordered w-full input-primary mt-4" placeholder="Note ordine" x-model="notes" />
+{% endpartialdef %}
+
+{% partialdef order-category-tabs %}
+<ul class="tabs tabs-boxed justify-center mb-4">
+  {% for category in categories %}
+  <li>
+    <button
+      class="tab"
+      :class="activeCategoryId === {{ category.id }} ? 'tab-active tab-primary' : 'tab-secondary'"
+      @click="activeCategoryId = {{ category.id }}"
+      hx-get="{% url 'get-products-by-category' %}?category_id={{ category.id }}"
+      hx-target="#product-tiles"
+      hx-swap="outerHTML"
+    >
+      {{ category.category.name }}
+    </button>
+  </li>
+  {% endfor %}
+</ul>
+{% endpartialdef %}
+
+{% partialdef order-product-tiles %}
+<div id="product-tiles" class="grid grid-cols-1 gap-6 
+  {% if selected_category.display_elements == 2 %}md:grid-cols-2{% endif %}
+  {% if selected_category.display_elements == 3 %}md:grid-cols-3{% endif %}
+  {% if selected_category.display_elements == 4 %}md:grid-cols-4{% endif %}
+  {% if selected_category.display_elements == 5 %}md:grid-cols-5{% endif %}
+  overflow-y-auto scrollbar-hidden h-68
+">
+  {% for product in products %}
+  <div
+    type="button"
+    class="bg-base-100 shadow-lg rounded-2xl cursor-pointer hover:bg-primary hover:text-white transition-colors relative group border-2 border-base-300 h-30 flex flex-col justify-between p-4 active:scale-80 duration-100"
+    @click="addItem({ id: '{{ product.id }}', name: '{{ product.product.name }}', price: '{{ product.price }}' })"
+  >
+    <!-- Nome centrato, non troncato, va a capo, testo più piccolo -->
+    <div class="text-lg font-bold text-center mt-4 break-words whitespace-normal">{{ product.product.name }}</div>
+    <div class="italic text-center truncate text-sm text-gray-500 mb-4">{{ product.product.description }}</div>
+    <!-- Prezzo visibile solo su hover, colori invertiti rispetto al tile -->
+    <span class="absolute bottom-3 right-3 bg-primary text-base-100 text-base font-bold px-3 py-1 rounded shadow-md transition-colors opacity-0 group-hover:opacity-100 group-hover:bg-base-100 group-hover:text-primary pointer-events-none">€ {{ product.price }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endpartialdef %}
+
+{% partialdef order-summary %}
+  <h2 class="text-2xl font-bold text-center uppercase mb-4 text-neutral">Riepilogo Ordine</h2>
+
+  <div class="border-t pt-4 divide-y h-70 overflow-y-auto scrollbar-hidden">
+    <template x-for="(item, index) in items" :key="index">
+      <div class="py-4">
+        <div class="flex justify-between items-center">
+          <span class="font-semibold" x-text="`${item.qty} x ${item.name}`"></span>
+          <div class="flex items-center space-x-3">
+            <!-- Icona - -->
+            <a role="button" class="text-error hover:text-red-600" @click="if (item.qty > 1) { item.qty -= 1 } else { items.splice(items.findIndex(i => i.id == item.id), 1) }">
+              <!-- minus-circle icon -->
+              <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12H9"/></svg>
+            </a>
+            <!-- Icona + -->
+            <a role="button" class="text-success hover:text-green-600" @click="item.qty += 1">
+              <!-- plus-circle icon -->
+              <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9"/></svg>
+            </a>
+            <!-- Toggle note -->
+            <a role="button" class="text-primary hover:text-blue-600" @click="item._showNote = !item._showNote">
+              <template x-if="!item._showNote">
+                <!-- chevron-down icon -->
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+              </template>
+              <template x-if="item._showNote && !item.note">
+                <!-- chevron-up icon -->
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" d="M19 15l-7-7-7 7"/></svg>
+              </template>
+              <template x-if="item._showNote && item.note">
+                <!-- x-circle icon -->
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 9l-6 6m0-6l6 6"/></svg>
+              </template>
+            </a>
+            <!-- Prezzo -->
+            <span class="ml-2 font-semibold" x-text="`€ ${(item.qty * item.price).toFixed(2)}`"></span>
+          </div>
+        </div>
+        <!-- Campo note -->
+        <div x-show="item._showNote" class="mt-2">
+          <input type="text" class="input input-sm input-bordered w-full input-secondary"
+                 placeholder="Note" x-model="item.note" @blur="if (!item.note) item._showNote = false" />
+        </div>
+      </div>
+    </template>
+  </div>
+{% endpartialdef %}

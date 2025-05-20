@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load partials %}
+{% load widget_tweaks %}
+
+{% block title %}Gestione Layout di Stampa{% endblock %}
+
+{% block content %}
+<h1 class="text-center text-2xl md:text-4xl font-bold mt-6 md:mt-10">Gestione Layout di Stampa</h1>
+<div id="printlayout-list" class="flex flex-col gap-6 m-4 md:m-10"
+     hx-get="{% url 'printers:printlayout_list' %}"
+     hx-trigger="refreshPrintlayoutList from:body">
+  {% partial printlayout_list %}
+</div>
+{% endblock %}
+
+{% partialdef printlayout_list %}
+{% for event, layouts in event_layouts %}
+  <div class="card bg-base-200 shadow-md mb-6" id="printlayout-card-{{ event.id }}">
+    <div class="card-body">
+      <h2 class="card-title text-lg md:text-xl mb-4">{{ event.name }} ({{ event.year }})</h2>
+      <div class="flex flex-col md:flex-row justify-end gap-4 mb-4">
+        <button class="btn btn-primary w-full md:w-auto"
+                hx-get="{% url 'printers:printlayout_form' %}?event_id={{ event.id }}&action=create"
+                hx-target="#printlayout-form-container-{{ event.id }}"
+                hx-swap="innerHTML">
+          <!-- plus-circle icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg> Nuovo Layout
+        </button>
+      </div>
+      <div id="printlayout-form-container-{{ event.id }}" class="mb-6"></div>
+      <div class="overflow-x-auto">
+        <table class="table w-full text-sm md:text-base text-center">
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Path Template</th>
+              <th>Solo Utente</th>
+              <th>Stampante</th>
+              <th>Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for layout in layouts %}
+            <tr>
+              <td>{{ layout.name }}</td>
+              <td>{{ layout.layout_path }}</td>
+              <td>{% if layout.is_user %}<span class="badge badge-success">Sì</span>{% else %}<span class="badge badge-ghost">No</span>{% endif %}</td>
+              <td>{{ layout.printer|default:'-' }}</td>
+              <td class="flex flex-col md:flex-row items-center justify-center gap-2">
+                <button class="btn btn-success btn-xs md:btn-sm md:btn-outline md:w-auto"
+                        hx-get="{% url 'printers:printlayout_update' layout.id %}?action=update"
+                        hx-target="#printlayout-form-container-{{ event.id }}"
+                        hx-swap="innerHTML">
+                  <!-- pencil-square icon -->
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                  </svg> <span class="hidden md:inline">Modifica</span>
+                </button>
+                <button class="btn btn-error btn-xs md:btn-sm md:btn-outline md:w-auto"
+                        hx-post="{% url 'printers:printlayout_delete' layout.id %}"
+                        hx-confirm="Sei sicuro di voler eliminare il layout '{{ layout.name }}'?"
+                        hx-target="#printlayout-card-{{ event.id }}"
+                        hx-swap="outerHTML">
+                  <!-- trash icon -->
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                  </svg> <span class="hidden md:inline">Elimina</span>
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+            {% if layouts|length == 0 %}
+            <tr>
+              <td colspan="5" class="text-center text-sm italic">Nessun layout presente per questo evento.</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% empty %}
+  <div class="alert alert-warning shadow-md col-span-full">
+    <span>Nessun layout presente.</span>
+  </div>
+{% endfor %}
+{% endpartialdef %}
+
+{% partialdef printlayout_form %}
+<div class="card bg-base-100 shadow-lg mb-6">
+  <div class="card-body">
+    <h2 class="card-title text-lg mb-4">
+      {% if actions == 'update' %}
+        Modifica Layout di Stampa
+      {% else %}
+        Nuovo Layout di Stampa
+      {% endif %}
+    </h2>
+    <form method="post" action="{{ action }}" hx-post="{{ action }}" hx-target="#printlayout-form-container-{{ form.event.value|default:form.event.initial|default:'' }}" hx-swap="innerHTML" class="flex flex-col gap-4"
+      x-data="{
+        isUser: {{ form.is_user.value|yesno:'true,false' }},
+        resetCategories() {
+          document.querySelectorAll('[name=\'category\'] input[type=checkbox]').forEach(cb => cb.checked = false);
+        },
+        resetPrinter() {
+          let select = document.querySelector('[name=\'printer\']');
+          if (select) select.value = '';
+        }
+      }"
+      @change="if(isUser){ resetCategories(); resetPrinter(); }">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="alert alert-error mb-2">
+          {% for error in form.non_field_errors %}
+            <p>{{ error }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+      <input type="hidden" name="event" value="{{ form.event.value|default:form.event.initial|default:'' }}">
+      <div>
+        <label class="block font-semibold mb-1">Nome</label>
+        {{ form.name|add_class:"input input-bordered w-full" }}
+        {% if form.name.errors %}
+          <p class="text-error text-sm">{{ form.name.errors }}</p>
+        {% endif %}
+      </div>
+      <div class="flex items-center gap-2">
+        <input type="checkbox" name="is_user" id="id_is_user" class="checkbox" x-model="isUser" @change="$dispatch('input')" {% if form.is_user.value %}checked{% endif %}>
+        <label class="font-semibold" for="id_is_user">Solo Utente</label>
+        {% if form.is_user.errors %}
+          <p class="text-error text-sm">{{ form.is_user.errors }}</p>
+        {% endif %}
+      </div>
+      <div x-show="!isUser" class="transition-all duration-200" name="category">
+        <label class="block font-semibold mb-1">Categorie associate</label>
+        <div class="flex flex-wrap gap-4">
+          {% for checkbox in form.category %}
+            <label class="flex items-center gap-2">
+              {{ checkbox.tag }}
+              <span>{{ checkbox.choice_label }}</span>
+            </label>
+          {% endfor %}
+        </div>
+        {% if form.category.errors %}
+          <p class="text-error text-sm">{{ form.category.errors }}</p>
+        {% endif %}
+      </div>
+      <div x-show="!isUser" class="transition-all duration-200">
+        <label class="block font-semibold mb-1">Stampante</label>
+        {{ form.printer|add_class:"select select-bordered w-full" }}
+        {% if form.printer.errors %}
+          <p class="text-error text-sm">{{ form.printer.errors }}</p>
+        {% endif %}
+      </div>
+      <div class="flex gap-2 justify-end">
+        <button type="submit" class="btn btn-primary flex items-center gap-2">
+          <!-- check-circle icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg> Salva
+        </button>
+        <button type="button" class="btn btn-secondary flex items-center gap-2" onclick="document.getElementById('printlayout-form-container-{{ form.event.value|default:form.event.initial|default:'' }}').innerHTML = ''">
+          <!-- x-circle icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg> Annulla
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endpartialdef %}

@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+{% load static %}
+{% load partials %}
+{% load widget_tweaks %}
+
+{% block title %}Gestione Eventi{% endblock %}
+
+{% block content %}
+<h1 class="text-center text-2xl md:text-4xl font-bold mt-8 md:mt-12">Gestione Eventi</h1>
+
+<div class="flex flex-col md:flex-row justify-end gap-4 m-4 md:m-10">
+  <button class="btn btn-primary w-full md:w-auto"
+          hx-get="{% url 'event-form' %}"
+          hx-target="#event-container"
+          hx-swap="innerHTML">
+    <!-- plus-circle icon -->
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+    </svg> Nuovo Evento
+  </button>
+  <button class="btn btn-neutral w-full md:w-auto"
+          hx-get="{% url 'event-import-form' %}"
+          hx-target="#event-container"
+          hx-swap="innerHTML"
+          id="btn-import-event">
+    <!-- cloud-arrow-down icon -->
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9.75v6.75m0 0-3-3m3 3 3-3m-8.25 6a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
+    </svg> Importa da Evento
+  </button>
+  <button class="btn btn-success w-full md:w-auto"
+          id="btn-import-xlsx-event"
+          hx-get="{% url 'event-import-xlsx-form' %}"
+          hx-target="#event-container"
+          hx-swap="innerHTML">
+    <!-- document-arrow-down icon -->
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+    </svg> Importa XLSX
+  </button>
+  <button class="btn btn-accent w-full md:w-auto"
+          id="btn-export-xlsx-event"
+          hx-get="{% url 'event-export-xlsx-form' %}"
+          hx-target="#event-container"
+          hx-swap="innerHTML">
+    <!-- document-arrow-up icon -->
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12-3-3m0 0-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+    </svg> Esporta XLSX
+  </button>
+</div>
+
+<div id="event-container" class="grid grid-cols-1 gap-4 md:gap-6 m-4 md:m-10">
+  <div id="event-table" hx-get="{% url 'event-table' %}" hx-trigger="load"></div>
+</div>
+
+{# Toast messages per i messaggi Django #}
+{% if messages %}
+  <div id="toast-messages" class="fixed top-4 right-4 z-50 flex flex-col gap-2">
+    {% for message in messages %}
+      <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" x-transition.opacity class="alert alert-info shadow-lg">
+        {{ message }}
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}
+
+{% partialdef event-form %}
+  <div class="card shadow-md bg-base-300 p-4">
+    <h2 class="text-xl font-semibold mb-4">
+      {% if form.instance.pk %} Modifica Evento {% else %} Nuovo Evento {% endif %}
+    </h2>
+    {# Mostra errori non associati a un campo specifico (es. ValidationError da clean) #}
+    {% if form.non_field_errors %}
+      <div class="alert alert-error mb-4">
+        {% for error in form.non_field_errors %}
+          <p>{{ error }}</p>
+        {% endfor %}
+      </div>
+    {% endif %}
+    <form method="post"
+          hx-post="{% url 'event-create' %}"
+          hx-target="#event-container"
+          hx-swap="innerHTML"
+          class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {% csrf_token %}
+      {% if form.instance.pk %}
+        <input type="hidden" name="id" value="{{ form.instance.pk }}">
+      {% endif %}
+      {% for field in form %}
+        <div>
+          <label class="block font-semibold mb-1">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}
+            <p class="text-error text-sm">{{ field.errors }}</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+      <div class="md:col-span-2 flex flex-col md:flex-row gap-2 justify-center">
+        <button type="submit" class="btn btn-primary w-full md:w-auto md:btn-lg">
+          <!-- check-circle icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg><span class="hidden md:inline"> Salva</span>
+        </button>
+        <button type="button" class="btn btn-secondary w-full md:w-auto md:btn-lg"
+                hx-get="{% url 'event-table' %}"
+                hx-target="#event-container"
+                hx-swap="innerHTML">
+          <!-- x-circle icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg><span class="hidden md:inline"> Annulla</span>
+        </button>
+      </div>
+    </form>
+  </div>
+{% endpartialdef %}
+
+{% partialdef event-table %}
+  <div class="card shadow-md bg-base-300 p-4">
+    <h2 class="text-lg md:text-xl font-semibold mb-4">Lista Eventi</h2>
+    <table class="table w-full text-sm md:text-base text-center">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th class="hidden md:table-cell">Anno</th>
+          <th class="{% if not user.is_superuser %}hidden{% endif %}">Gruppo</th>
+          <th>Opzioni Richieste</th>
+          <th>Prezzo Extra</th>
+          <th>Evento</th>
+          <th>Azioni</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for event in events %}
+          <tr id="event-{{ event.id }}">
+            <td>{{ event.name }} <span class="md:hidden">({{ event.year }})</span></td>
+            <td class="hidden md:table-cell">{{ event.year }}</td>
+            <td class="{% if not user.is_superuser %}hidden{% endif %}">{{ event.group }}</td>
+            <td>
+              {% if event.option_client %}
+                <span>Cliente</span><br>
+              {% endif %}
+              {% if event.option_table %}
+                <span>Tavolo</span><br>
+              {% endif %}
+              {% if event.option_cover %}
+                <span>Coperto</span><br>
+              {% endif %}
+              {% if not event.option_client and not event.option_table and not event.option_cover %}
+                <span>-</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if event.pay_cover != 0 %}
+                <span>Coperto: {{ event.pay_cover }}</span><br>
+              {% endif %}
+              {% if event.pay_takeaway != 0 %}
+                <span>Asporto: {{ event.pay_takeaway }}</span>
+              {% endif %}
+              {% if event.pay_cover == 0 and event.pay_takeaway == 0 %}
+                <span>-</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if event.active %}
+                <span class="hidden md:inline badge badge-success">Attivo</span>
+                <span class="inline md:hidden">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                  </svg>
+                </span>
+              {% else %}
+                <span class="hidden md:inline badge badge-error">Non Attivo</span>
+                <span class="inline md:hidden">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                  </svg>
+                </span>
+              {% endif %}
+            </td>
+            <td class="flex flex-col md:flex-row items-center justify-center gap-2">
+              <button class="btn btn-warning btn-xs md:btn-sm md:btn-outline md:w-auto"
+                      hx-get="{% url 'event-edit' event.id %}"
+                      hx-target="#event-container"
+                      hx-swap="innerHTML">
+                <!-- pencil-square icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                </svg>
+                <span class="hidden md:inline">Modifica</span>
+              </button>
+              <form method="post" hx-post="{% url 'event-delete' event.id %}" hx-target="#event-container" hx-swap="innerHTML">
+                {% csrf_token %}
+                <button class="btn btn-error btn-xs md:btn-sm md:btn-outline md:w-auto">
+                  <!-- trash icon -->
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                  </svg>
+                  <span class="hidden md:inline">Elimina</span>
+                </button>
+              </form>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5">Nessun evento</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endpartialdef %}
+
+{% partialdef event-import-form %}
+  <div class="card shadow-md bg-base-300 p-4 md:p-6">
+    <h2 class="text-lg md:text-xl font-semibold mb-4">Importa categorie e prodotti da evento esistente</h2>
+    <form method="post" hx-post="{% url 'event-import' %}" hx-target="#event-container" hx-swap="innerHTML">
+      {% csrf_token %}
+      <div class="form-control mb-4">
+        <label class="label font-bold">Evento destinazione</label>
+        <select name="target_event_id" class="select select-bordered w-full" required>
+          {% for ev in events %}
+            <option value="{{ ev.id }}">{{ ev.name }} ({{ ev.year }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-control mb-4">
+        <label class="label font-bold">Evento sorgente</label>
+        <select name="source_event_id" class="select select-bordered w-full" required>
+          {% for ev in events %}
+            <option value="{{ ev.id }}">{{ ev.name }} ({{ ev.year }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="md:col-span-2 flex flex-col md:flex-row gap-2 justify-center">
+        <button type="submit" class="btn btn-primary w-full md:w-auto md:btn-lg">
+          <!-- cloud-arrow-down icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9.75v6.75m0 0-3-3m3 3 3-3m-8.25 6a4.5 4.5 0 0 1-1.41-8.775 5.25 5.25 0 0 1 10.233-2.33 3 3 0 0 1 3.758 3.848A3.752 3.752 0 0 1 18 19.5H6.75Z" />
+          </svg>
+          <span class="hidden md:inline">Importa</span>
+        </button>
+        <button type="button" class="btn btn-secondary w-full md:w-auto md:btn-lg"
+                hx-get="{% url 'event-table' %}"
+                hx-target="#event-container"
+                hx-swap="innerHTML">
+          <!-- x-circle icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m9.75 9.75 4.5 4.5m0-4.5-4.5 4.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+          </svg>
+          <span class="hidden md:inline">Annulla</span>
+        </button>
+      </div>
+    </form>
+  </div>
+{% endpartialdef %}
+
+{% partialdef event-import-xlsx-form %}
+  <div class="card shadow-md bg-base-300 p-4 md:p-6">
+    <h2 class="text-lg md:text-xl font-semibold mb-4">Importa evento da XLSX</h2>
+    <form method="post" action="{% url 'event-import-xlsx' %}" enctype="multipart/form-data" class="space-y-4">
+      {% csrf_token %}
+      <div class="form-control mb-4">
+        <label class="label font-bold">Evento di destinazione</label>
+        <select name="target_event_id" class="select select-bordered w-full" required>
+          {% for ev in events %}
+            <option value="{{ ev.id }}">{{ ev.name }} ({{ ev.year }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-control mb-4">
+        <label class="label font-bold">Seleziona file XLSX</label>
+        {{ form.file|add_class:"file-input file-input-bordered w-full" }}
+      </div>
+      {% if success %}
+        <div class="alert alert-success">{{ success }}</div>
+      {% endif %}
+      {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+      {% endif %}
+      <div class="md:col-span-2 flex flex-col md:flex-row gap-2 justify-center">
+        <button type="submit" class="btn btn-success w-full md:w-auto md:btn-lg">
+          <!-- document-arrow-down icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+          </svg> Importa XLSX
+        </button>
+        <button type="button" class="btn btn-secondary w-full md:w-auto md:btn-lg"
+                hx-get="{% url 'event-table' %}"
+                hx-target="#event-container"
+                hx-swap="innerHTML">
+          <!-- arrow-uturn-left icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+          </svg> Indietro
+        </button>
+      </div>
+    </form>
+  </div>
+{% endpartialdef %}
+
+{% partialdef event-export-xlsx-form %}
+  <div class="card shadow-md bg-base-300 p-4 md:p-6">
+    <h2 class="text-lg md:text-xl font-semibold mb-4">Esporta evento in XLSX</h2>
+    <form method="get" action="{% url 'event-export-xlsx' %}" class="space-y-4">
+      <div class="form-control mb-4">
+        <label class="label font-bold">Seleziona evento da esportare</label>
+        <select name="event_id" class="select select-bordered w-full" required>
+          {% for ev in events %}
+            <option value="{{ ev.id }}">{{ ev.name }} ({{ ev.year }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="md:col-span-2 flex flex-col md:flex-row gap-2 justify-center">
+        <button type="submit" class="btn btn-accent w-full md:w-auto md:btn-lg">
+          <!-- document-arrow-up icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m6.75 12-3-3m0 0-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+          </svg> Esporta XLSX
+        </button>
+        <button type="button" class="btn btn-secondary w-full md:w-auto md:btn-lg"
+                hx-get="{% url 'event-table' %}"
+                hx-target="#event-container"
+                hx-swap="innerHTML">
+          <!-- arrow-uturn-left icon -->
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
+          </svg> Indietro
+        </button>
+      </div>
+    </form>
+  </div>
+{% endpartialdef %}
+

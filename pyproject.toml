@@ -1,0 +1,21 @@
+[project]
+name = "django-sagragest"
+version = "0.8.2"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "django>=5.2",
+    "django-allauth>=65.7.0",
+    "django-filter>=25.1",
+    "django-htmx>=1.23.0",
+    "django-import-export[all]>=4.3.7",
+    "django-template-partials>=24.4",
+    "django-templatetag-sugar>=1.0",
+    "django-widget-tweaks>=1.5.0",
+    "gunicorn>=23.0.0",
+    "pillow>=11.2.1",
+    "pycups>=2.0.4",
+    "python-dotenv>=1.1.0",
+    "weasyprint>=65.1",
+]

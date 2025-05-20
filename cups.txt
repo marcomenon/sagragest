@@ -1,0 +1,7 @@
+import os
+import cups
+
+cups_server = os.getenv("CUPS_SERVER", "http://localhost:631")
+conn = cups.Connection(host=cups_server.replace("http://", ""))
+
+docker compose up --build -d

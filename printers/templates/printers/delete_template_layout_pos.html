@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Ordine Annullato</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif;
+            font-size: 50px;
+            width: 98%;
+            max-width: 98%;
+            margin: 0 auto; 
+        }
+        .cancelled {
+            color: #000000;
+            border: 2px solid #000000;
+            padding: 20px;
+            margin: 30px 0;
+            text-align: center;
+            font-size: 1em;
+        }
+    </style>
+</head>
+<body>
+    <div class="cancelled">
+        <h2>ORDINE #{{ order.number }} ANNULLATO</h2>
+        <p>L'ordine è stato annullato e non deve essere preparato.</p>
+    </div>
+</body>
+</html>

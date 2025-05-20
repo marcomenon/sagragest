@@ -1,0 +1,31 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="it" data-theme="{{ theme }}">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block rapid_title %}Inserimento Rapido{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="{% static 'output.css' %}" rel="stylesheet">
+    <script src="{% static 'js/htmx.js' %}" defer></script>
+    {% block extra_head %}{% endblock %}
+    <script src="{% static 'js/alpine.js' %}" defer></script>
+</head>
+<body hx-headers='{"x-csrftoken": "{{ csrf_token }}"}' class="bg-gray-100">
+    {% block messages %}
+        {% if messages %}
+            <div id="toast-messages" class="fixed top-4 right-4 z-50 flex flex-col gap-2">
+                {% for message in messages %}
+                    <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 3000)" x-transition.opacity class="alert alert-info shadow-lg">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endblock %}
+    <div id="main" class="scrollbar-hidden">
+        {% block content %}
+        {% endblock %}
+    </div>
+    {% block extra_body %}{% endblock %}
+</body>
+</html>

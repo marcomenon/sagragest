@@ -1,0 +1,143 @@
+{% extends 'sagrarapid/rapid_base.html' %}
+{% load static %}
+
+{% block title %}Ordine Rapido{% endblock %}
+
+{% block content %}
+<div class="p-8 min-h-screen flex-1" x-data="orderRapid({{ full_interface|safe }})">
+  <div class="flex flex-col md:flex-row gap-8 h-[calc(100vh-4rem)]">  {# 4rem circa = m-8 p-4 #}
+    <!-- Colonna sinistra: ordine in corso -->
+    <div class="md:w-1/3 w-full bg-base-200 rounded-lg shadow flex flex-col gap-4 h-full min-h-0">
+      <div class="p-4 flex flex-col gap-4 overflow-auto h-full min-h-0">
+        <h2 class="text-lg font-semibold mb-2">Prodotti selezionati</h2>
+        <template x-if="selected.length === 0">
+          <div class="text-gray-400">Nessun prodotto selezionato</div>
+        </template>
+        <template x-for="(item, idx) in selected" :key="item.product_event_id">
+          <div class="flex items-center justify-between border-b py-2">
+            <div>
+              <span x-text="item.product_name"></span>
+              <span class="text-neutral ml-2" x-show="item.qty > 1">x <span x-text="item.qty"></span></span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="btn btn-ghost" @click="decrement(idx)">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14" />
+                  </svg>                  
+              </button>
+              <button class="btn btn-ghost" @click="increment(idx)">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>                  
+              </button>
+              <button class="btn btn-ghost" @click="remove(idx)">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>                  
+              </button>
+            </div>
+          </div>
+        </template>
+        <div class="mt-4 flex justify-between items-center font-bold text-lg">
+          <span>Totale</span>
+          <span x-text="total.toFixed(2) + ' €'"></span>
+        </div>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="event_id" value="{{ event.id }}">
+          <template x-for="item in selected" :key="item.product_event_id">
+            <div>
+              <input type="hidden" name="prodotti[]" :value="item.product_event_id">
+              <input type="hidden" name="quantities[]" :value="item.qty">
+            </div>
+          </template>
+          <button type="submit" class="btn btn-primary w-full mt-4" :disabled="selected.length === 0">Invia ordine</button>
+        </form>
+      </div>
+    </div>
+    <!-- Colonna destra: bottoni prodotti -->
+    <div class="md:w-2/3 w-full bg-base-100 rounded-lg shadow flex flex-col h-full min-h-0">
+      <div class="p-4 flex-1 overflow-auto min-h-0">
+        <h2 class="text-lg font-semibold mb-2">Prodotti disponibili</h2>
+        {% if full_interface %}
+          {% for row in full_interface.rows %}
+            <div class="flex flex-wrap gap-2 my-8 justify-center">
+              {% with row.elements|length as num_buttons %}
+                {% for elem in row.elements %}
+                  <button class="btn btn-accent flex-1 min-w-0 w-full break-words py-6" @click="addProduct({{ elem.product_event_id }}, '{{ elem.product_name }}', {{ elem.position }}, {{ elem.row_id|default:'0' }}, {{ elem.price|default:0 }})">
+                    {{ elem.product_name }}
+                  </button>
+                {% endfor %}
+              {% endwith %}
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-gray-400">Nessuna interfaccia rapida configurata per questo evento.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function orderRapid(full_interface) {
+  return {
+    selected: [],
+    total: 0,
+    prices: {},
+    init() {
+      // Precarica prezzi se disponibili
+      if (full_interface && full_interface.rows) {
+        for (const row of full_interface.rows) {
+          for (const elem of row.elements) {
+            this.prices[elem.product_event_id] = elem.price || 0;
+          }
+        }
+      }
+      this.updateTotal();
+      this.$watch('selected', () => { this.updateTotal() });
+    },
+    addProduct(id, name, pos, row, price) {
+      let foundIdx = this.selected.findIndex(item => item.product_event_id === id);
+      if (foundIdx !== -1) {
+        this.selected[foundIdx].qty += 1;
+        this.selected = [...this.selected];
+      } else {
+        this.selected.push({ product_event_id: id, product_name: name, qty: 1, price: price || this.prices[id] || 0 });
+        this.selected = [...this.selected];
+      }
+      this.updateTotal();
+    },
+    increment(idx) {
+      this.selected[idx].qty += 1;
+      this.selected = [...this.selected];
+      this.updateTotal();
+    },
+    decrement(idx) {
+      if (this.selected[idx].qty > 1) {
+        this.selected[idx].qty -= 1;
+        this.selected = [...this.selected];
+      } else {
+        this.selected.splice(idx, 1);
+        this.selected = [...this.selected];
+      }
+      this.updateTotal();
+    },
+    remove(idx) {
+      this.selected.splice(idx, 1);
+      this.selected = [...this.selected];
+      this.updateTotal();
+    },
+    updateTotal() {
+      let sum = 0;
+      for (let item of this.selected) {
+        sum += item.qty * (item.price || 0);
+      }
+      this.total = sum;
+    },
+    submitOrder() {
+      // Funzione non più necessaria, lasciata vuota per compatibilità
+    },
+  }
+}
+</script>
+{% endblock %}
