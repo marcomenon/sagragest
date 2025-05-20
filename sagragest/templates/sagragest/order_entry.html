@@ -25,6 +25,7 @@ function getCSRFToken() {
   return '';
 }
 </script>
+{{ order_items|default:"[]"|json_script:"order-items-data" }}
 <script>
 function orderSession() {
   return {
@@ -42,7 +43,14 @@ function orderSession() {
     isTakeaway: ("{{ order.is_takeaway|yesno:'true,false'|default:'false' }}" === "true"),
     notes: "{{ order.notes|default:''|escapejs }}",
     cash: 0,
-    items: JSON.parse("{{ order_items|default:'[]'|safe }}"),
+    items: (() => {
+      try {
+        const data = JSON.parse(document.getElementById('order-items-data').textContent);
+        return Array.isArray(data) ? data : [];
+      } catch(e) {
+        return [];
+      }
+    })(),
     orderId: Number("{{ order.id|default:'null' }}"),
     client: "{{ order.client|default:''|escapejs }}",
     extra_price: 0,
@@ -397,7 +405,7 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
       <div class="col-span-1 text-right min-w-[80px]">Prezzo</div>
     </div>
     <div class="">
-      <template x-for="item in items" :key="item.id">
+      <template x-for="(item, $index) in items" :key="item.id + '-' + $index">
         <div>
           <!-- Riga prodotto -->
           <div class="grid grid-cols-4 gap-2 items-center py-2 border-b border-base-200 text-lg">

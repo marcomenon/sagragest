@@ -382,6 +382,8 @@ uv sync
 uv run manage.py makemigrations accounts printers reports sagragest sagrarapid --noinput
 uv run manage.py migrate --noinput
 uv run manage.py collectstatic --noinput
+uv run manage.py sadmin
+uv run manage.py domain
 
 mkdir -p ~/.npm-global
 npm config set prefix '~/.npm-global'

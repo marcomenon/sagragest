@@ -796,33 +796,28 @@ def submit_order(request):
         if not daytime:
             return JsonResponse({"error": "Nessuna giornata attiva per l'evento."}, status=400)
 
+    def safe_int(val):
+        # Se val è una lista o tupla, prendi il primo elemento
+        if isinstance(val, (list, tuple)):
+            val = val[0] if val else 0
+        if val in [None, '', 'null']:
+            return 0
+        try:
+            return int(val)
+        except (ValueError, TypeError):
+            return 0
+
     if order_id:
         # MODIFICA ORDINE
         order = get_object_or_404(Order, pk=order_id)
         client = data.get("client")
         if client in [None, '', 'null']:
             client = ""
-        table = data.get("table")
-        if table in [None, '', 'null']:
-            table = 0
-        try:
-            table = int(table)
-        except (ValueError, TypeError):
-            table = 0
-        if table < 0:
-            table = 0
-        cover = data.get("cover")
-        if cover in [None, '', 'null']:
-            cover = 0
-        try:
-            cover = int(cover)
-        except (ValueError, TypeError):
-            cover = 0
-        if cover < 0:
-            cover = 0
-        order.client=client,
-        order.table_number=table,
-        order.cover=cover,
+        table = safe_int(data.get("table"))
+        cover = safe_int(data.get("cover"))
+        order.client = client
+        order.table_number = table
+        order.cover = cover
         order.is_takeaway = data.get("is_takeaway", False)
         order.notes = data.get("notes", "")
         order.total = data.get("total", 0.0)
@@ -830,7 +825,7 @@ def submit_order(request):
         order.daytime = daytime
         order.event = daytime.event
         order.status = OrderStatus.CANCELLED
-        order.created_by=user
+        order.created_by = user
         should_print = data.get("print")
         if should_print:
             print_action(order, "PRINT_FOR_ALL")
@@ -857,24 +852,8 @@ def submit_order(request):
         client = data.get("client")
         if client in [None, '', 'null']:
             client = ""
-        table = data.get("table")
-        if table in [None, '', 'null']:
-            table = 0
-        try:
-            table = int(table)
-        except (ValueError, TypeError):
-            table = 0
-        if table < 0:
-            table = 0
-        cover = data.get("cover")
-        if cover in [None, '', 'null']:
-            cover = 0
-        try:
-            cover = int(cover)
-        except (ValueError, TypeError):
-            cover = 0
-        if cover < 0:
-            cover = 0
+        table = safe_int(data.get("table"))
+        cover = safe_int(data.get("cover"))
         order = Order.objects.create(
             number=Order.get_next_number_for_daytime(daytime),
             client=client,
