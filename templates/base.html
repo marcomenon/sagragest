@@ -8,7 +8,6 @@
     <link href="{% static 'output.css' %}" rel="stylesheet">
     <script src="{% static 'js/htmx.js' %}" defer></script>
     <script src="{% static 'js/alpine.js' %}" defer></script>
-    <script src="{% static 'js/chart.js' %}" defer></script>
     {% block extra_head %}{% endblock %}
 </head>
 <body hx-headers='{"x-csrftoken": "{{ csrf_token }}"}'>

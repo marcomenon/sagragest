@@ -2,13 +2,44 @@
 {% load partials %}
 {% load filters %}
 {% load widget_tweaks %}
-
+{% load static %}
+{% block extra_head %}<script src="{% static 'js/chart.umd.js' %}" defer></script>{% endblock %}
 {% block title %}Reports{% endblock %}
 
 {% block content %}
 <h1 class="text-center text-2xl md:text-4xl font-bold mt-6 md:mt-10">Dashboard Reportistica</h1>
 <div id="filters-and-dashboard" class="mt-10">
   {% partial filters-and-dashboard %}
+</div>
+
+{# Debug: mostra i valori disponibili nei select #}
+<div class="mb-4 p-2 bg-warning text-warning-content rounded">
+  <strong>DEBUG eventi disponibili:</strong>
+  <ul>
+    {% for event in filter.filters.event.queryset %}
+      <li>{{ event.pk }} - {{ event }}</li>
+    {% empty %}
+      <li>Nessun evento</li>
+    {% endfor %}
+  </ul>
+  <strong>DEBUG giornate disponibili:</strong>
+  <ul>
+    {% for dt in filter.filters.daytime.queryset %}
+      <li>{{ dt.pk }} - {{ dt }}</li>
+    {% empty %}
+      <li>Nessuna giornata</li>
+    {% endfor %}
+  </ul>
+  <strong>DEBUG gruppi disponibili:</strong>
+  <ul>
+    {% for group in filter.filters.group.queryset %}
+      <li>{{ group.pk }} - {{ group }}</li>
+    {% empty %}
+      <li>Nessun gruppo</li>
+    {% endfor %}
+  </ul>
+  <strong>Utente:</strong> {{ user }}<br>
+  <strong>Superuser:</strong> {{ is_superuser }}
 </div>
 
 {% endblock %}
@@ -114,6 +145,9 @@
       </div>
       <button type="button" class="btn btn-neutral mt-4 w-full" onclick="location.href='{% url 'reports-dashboard' %}'">
         Reset
+      </button>
+      <button type="submit" formaction="{% url 'reports-print' %}" formtarget="_blank" class="btn btn-primary mt-2 w-full">
+        Stampa Report
       </button>
     </form>
   </aside>

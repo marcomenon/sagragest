@@ -157,7 +157,8 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
       const data = document.getElementById('order-session-data');
       if (!data) return;
       // Cerca il wrapper Alpine più vicino al main aggiornato
-      const alpine = document.querySelector('[x-data]');
+      const main = document.getElementById('order-main-content');
+      const alpine = main.closest('[x-data]') || document.querySelector('[x-data]');
       if (!alpine || !window.Alpine || typeof window.Alpine.$data !== 'function') return;
       const store = window.Alpine.$data(alpine);
       store.selectedDaytimeId = parseInt(data.dataset.selectedDaytimeId) || null;
@@ -166,7 +167,8 @@ document.body.addEventListener('htmx:afterSwap', function(e) {
       store.option_cover = data.dataset.optionCover === 'true';
       store.option_client = data.dataset.optionClient === 'true';
       store.option_table = data.dataset.optionTable === 'true';
-      if (typeof store.updateExtra === 'function') store.updateExtra();
+      // Reset anche extra_price per evitare residui
+      store.updateExtra && store.updateExtra();
     });
   }
 });
