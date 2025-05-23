@@ -56,8 +56,3 @@ echo "==> Applicazione nuovo gruppo docker (valido solo per shell corrente)..."
 newgrp docker
 
 echo "✅ Setup completato! Riavvia o esci/rientra nella sessione per usare Docker senza sudo."
-
-
-#nano setup_ubuntu_server.sh
-#chmod +x setup_ubuntu_server.sh
-#./setup_ubuntu_server.sh
