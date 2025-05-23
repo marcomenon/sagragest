@@ -1,0 +1,15 @@
+#Internal package file, do not edit.
+#Thu May 18 14:47:38 CST 2023
+1.base=D\:\\android StudioWorkspace\\BlueToothDEMO\\app\\build\\intermediates\\merged_assets\\debug\\mergeDebugAssets\\out
+2.path=printer.png
+0.baseType=DIRECTORY
+2.base=D\:\\android StudioWorkspace\\BlueToothDEMO\\app\\build\\intermediates\\merged_assets\\debug\\mergeDebugAssets\\out
+2.set=ASSET
+1.baseType=DIRECTORY
+count=3
+1.set=ASSET
+0.path=classes.dex
+0.set=DEX
+0.base=D\:\\android StudioWorkspace\\BlueToothDEMO\\app\\build\\intermediates\\transforms\\dexMerger\\debug\\0
+2.baseType=DIRECTORY
+1.path=ic_launcher.png

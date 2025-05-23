@@ -1,0 +1,57 @@
+
+/* Class = "UIButton"; normalTitle = "打印文本"; ObjectID = "58E-jm-fQm"; */
+"58E-jm-fQm.normalTitle" = "Print Text";
+
+/* Class = "UILabel"; text = "Label"; ObjectID = "GSF-sl-ps7"; */
+"GSF-sl-ps7.text" = "Label";
+
+/* Class = "UIButton"; normalTitle = "打印图片"; ObjectID = "HbJ-3n-PaY"; */
+"HbJ-3n-PaY.normalTitle" = "Print Image";
+
+/* Class = "UIButton"; normalTitle = "打印一维码"; ObjectID = "OAd-dh-zXp"; */
+"OAd-dh-zXp.normalTitle" = "Print Codebar";
+
+/* Class = "UILabel"; text = "已连接"; ObjectID = "PWU-96-VOU"; */
+"PWU-96-VOU.text" = "Connected";
+
+/* Class = "UIButton"; normalTitle = "蜂鸣"; ObjectID = "T2b-83-DLl"; */
+"T2b-83-DLl.normalTitle" = "Beep";
+
+/* Class = "UIButton"; normalTitle = "选择打印机"; ObjectID = "TiH-FX-gub"; */
+"TiH-FX-gub.normalTitle" = "Select Printer";
+
+/* Class = "UIButton"; normalTitle = "发送HEX"; ObjectID = "X2B-VP-QeH"; */
+"X2B-VP-QeH.normalTitle" = "Send HEX";
+
+/* Class = "UIButton"; normalTitle = "图形方式打印"; ObjectID = "a3N-IJ-qHR"; */
+"a3N-IJ-qHR.normalTitle" = "Print Image mode";
+
+/* Class = "UILabel"; text = "Label"; ObjectID = "eSQ-IM-Sa9"; */
+"eSQ-IM-Sa9.text" = "Label";
+
+/* Class = "UIButton"; normalTitle = "打印二维码"; ObjectID = "f1g-j7-B1m"; */
+"f1g-j7-B1m.normalTitle" = "Print QrCode";
+
+/* Class = "UISegmentedControl"; gR0-mU-F2Q.segmentTitles[0] = "蓝牙"; ObjectID = "gR0-mU-F2Q"; */
+"gR0-mU-F2Q.segmentTitles[0]" = "Bluetooth";
+
+/* Class = "UISegmentedControl"; gR0-mU-F2Q.segmentTitles[1] = "WIFI"; ObjectID = "gR0-mU-F2Q"; */
+"gR0-mU-F2Q.segmentTitles[1]" = "WIFI";
+
+/* Class = "UIButton"; normalTitle = "字体放大倍数"; ObjectID = "jaz-5s-SFp"; */
+"jaz-5s-SFp.normalTitle" = "Font Size";
+
+/* Class = "UIButton"; normalTitle = "切刀"; ObjectID = "kNF-pl-9ge"; */
+"kNF-pl-9ge.normalTitle" = "Cut paper";
+
+/* Class = "UIButton"; normalTitle = "打印测试页"; ObjectID = "peq-qc-a2N"; */
+"peq-qc-a2N.normalTitle" = "Print Test Page";
+
+/* Class = "UIButton"; normalTitle = "开钱箱"; ObjectID = "rKe-AA-2cs"; */
+"rKe-AA-2cs.normalTitle" = "Open Casher";
+
+/* Class = "UIButton"; normalTitle = "自检页"; ObjectID = "uqV-vK-D1b"; */
+"uqV-vK-D1b.normalTitle" = "Self Test";
+
+/* Class = "UIButton"; normalTitle = "58mm"; ObjectID = "yni-jc-bjD"; */
+"yni-jc-bjD.normalTitle" = "58mm";

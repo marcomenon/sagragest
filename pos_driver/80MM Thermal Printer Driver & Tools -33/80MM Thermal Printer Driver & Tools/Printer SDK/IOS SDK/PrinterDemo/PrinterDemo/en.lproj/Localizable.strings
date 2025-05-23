@@ -1,0 +1,9 @@
+OK = "OK";
+Cancel = "Cancel";
+SelectPrinter = "Select Printer";
+ConnectIP = "Connect";
+InputIPAddress = "Please input IP address";
+NotConnected = "Not connected";
+Connected = "Click to disconnect";
+CameraPrivate = "The permission of camera is closed, Please go to Settings->Privacy->Camera” and open it";
+FontSize = "Font Size";
