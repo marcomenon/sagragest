@@ -1,4 +1,0 @@
-#Thu May 18 14:47:38 CST 2023
-base.0=D\:\\android StudioWorkspace\\BlueToothDEMO\\app\\build\\intermediates\\transforms\\dexMerger\\debug\\0
-path.0=classes.dex
-renamed.0=classes.dex
